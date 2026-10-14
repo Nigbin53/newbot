@@ -30,68 +30,38 @@
 | Edge Functions | Read-write |
 | Edge Function Secrets | Read-write |
 
-## 3. Программы на Mac (один раз)
+## 3. GitHub: репозиторий и секреты (один раз, в браузере)
+
+1. [Создай репозиторий](https://github.com/new): имя `kinpass`, **Public**, без README и .gitignore.
+2. **Settings → Pages → Source:** выбери **GitHub Actions**.
+3. **Settings → Secrets and variables → Actions → New repository secret** — добавь четыре секрета:
+
+| Имя | Значение |
+| --- | --- |
+| `BOT_TOKEN` | токен от BotFather |
+| `SUPABASE_ACCESS_TOKEN` | токен доступа Supabase |
+| `SUPABASE_DB_PASSWORD` | пароль базы данных |
+| `SUPABASE_PROJECT_REF` | ID проекта Supabase |
+
+## 4. Первая отправка (один раз)
+
+Папка уже является git-репозиторием с первым коммитом. Привяжи её к GitHub и отправь:
 
 ```sh
-git --version
+cd ~/Desktop/passmd && git remote add origin https://github.com/Nigbin53/kinpass.git && git push -u origin main
 ```
 
-Если Mac предложит установить Command Line Tools — согласись.
+Через 3–5 минут приложение будет по адресу `https://nigbin53.github.io/kinpass/mini.html`, а в боте появится кнопка **Открыть Kinpass**. Ход публикации — вкладка **Actions** в репозитории.
 
-Установи GitHub CLI: установщик `.pkg` с [cli.github.com](https://cli.github.com) или `brew install gh`. Затем войди в аккаунт:
+## 5. Обновления — одна строка
+
+Claude исправляет код и сам делает коммит. Тебе остаётся:
 
 ```sh
-gh auth login
+cd ~/Desktop/passmd && git push
 ```
 
-Выбери: **GitHub.com → HTTPS → Login with a web browser**.
-
-## 4. Первая публикация (один раз)
-
-```sh
-cd ~/Desktop/passmd
-git init -b main
-git add .
-git commit -m "Kinpass: первая версия"
-gh repo create kinpass --public --source=. --remote=origin
-gh api -X POST "repos/{owner}/{repo}/pages" -f build_type=workflow
-```
-
-Последняя команда включает GitHub Pages в режиме «GitHub Actions». Теперь добавь четыре секрета. Каждая команда попросит вставить значение — оно не отображается на экране:
-
-```sh
-gh secret set BOT_TOKEN
-gh secret set SUPABASE_ACCESS_TOKEN
-gh secret set SUPABASE_DB_PASSWORD
-gh secret set SUPABASE_PROJECT_REF
-```
-
-И отправь код:
-
-```sh
-git push -u origin main
-gh run watch
-```
-
-`gh run watch` показывает публикацию по шагам. Через 3–5 минут приложение будет по адресу:
-
-```text
-https://ТВОЙ_ЛОГИН.github.io/kinpass/mini.html
-```
-
-## 5. Обновления
-
-Поменял код — отправь его:
-
-```sh
-git add .
-git commit -m "Что изменил"
-git push
-```
-
-Всё остальное — база, сервер, сайт и кнопка бота — обновится само. Статус: `gh run watch` или вкладка **Actions** в репозитории.
-
-Если поменялся токен или пароль — обнови секрет (`gh secret set ИМЯ`) и перезапусти публикацию: `gh workflow run deploy.yml`.
+Тесты, база, сервер, сайт и кнопка бота обновятся сами. Если поменялся токен или пароль — обнови секрет в Settings → Secrets и нажми **Actions → Публикация Kinpass → Run workflow**.
 
 ## 6. Открыть в Telegram
 
