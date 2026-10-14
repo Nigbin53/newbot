@@ -75,7 +75,7 @@ cd ~/Desktop/passmd && git push
 
 | Шаг | Что сделать |
 | --- | --- |
-| Проверить секреты | Добавь недостающий секрет командой из ошибки. |
+| Проверить секреты | Добавь недостающий секрет в Settings → Secrets and variables → Actions. |
 | Тесты | Код сломан — исправь и снова сделай push. |
 | Supabase — база данных и сервер | 401/403 — проверь `SUPABASE_ACCESS_TOKEN` и его права. Ошибка пароля — `SUPABASE_DB_PASSWORD`. |
 | Проверить сервер | Supabase → Edge Functions → kinpass-api → Logs. |

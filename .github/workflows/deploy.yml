@@ -1,5 +1,5 @@
 # Каждый git push в main: тесты → Supabase (база + сервер) → GitHub Pages → кнопка бота.
-# Секреты задаются один раз: Settings → Secrets and variables → Actions (или gh secret set).
+# Секреты задаются один раз: Settings → Secrets and variables → Actions в Settings → Secrets and variables → Actions.
 name: Публикация Kinpass
 
 on:
@@ -42,7 +42,7 @@ jobs:
         run: |
           missing=0
           for name in BOT_TOKEN SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_REF; do
-            if [ -z "${!name}" ]; then echo "::error::Нет секрета $name. Добавь: gh secret set $name"; missing=1; fi
+            if [ -z "${!name}" ]; then echo "::error::Нет секрета $name. Добавь: Settings → Secrets and variables → Actions"; missing=1; fi
           done
           if ! [[ "$SUPABASE_PROJECT_REF" =~ ^[a-z]{20}$ ]]; then echo "::error::SUPABASE_PROJECT_REF — 20 строчных латинских букв."; missing=1; fi
           exit $missing
