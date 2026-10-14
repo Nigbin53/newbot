@@ -1,0 +1,5 @@
+project_id = "kinpass"
+
+[functions.kinpass-api]
+verify_jwt = false
+

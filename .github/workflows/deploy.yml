@@ -1,0 +1,122 @@
+# Каждый git push в main: тесты → Supabase (база + сервер) → GitHub Pages → кнопка бота.
+# Секреты задаются один раз: Settings → Secrets and variables → Actions (или gh secret set).
+name: Публикация Kinpass
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: kinpass-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}mini.html
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Проверить секреты
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          missing=0
+          for name in BOT_TOKEN SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_REF; do
+            if [ -z "${!name}" ]; then echo "::error::Нет секрета $name. Добавь: gh secret set $name"; missing=1; fi
+          done
+          if ! [[ "$SUPABASE_PROJECT_REF" =~ ^[a-z]{20}$ ]]; then echo "::error::SUPABASE_PROJECT_REF — 20 строчных латинских букв."; missing=1; fi
+          exit $missing
+
+      - name: Установить зависимости
+        run: npm ci
+
+      - name: Тесты
+        run: npm test
+
+      - name: Адрес приложения
+        id: site
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          repo="${GITHUB_REPOSITORY#*/}"
+          origin="https://${owner}.github.io"
+          if [ "${repo,,}" = "${owner}.github.io" ]; then path=""; else path="/${repo}"; fi
+          echo "origin=${origin}" >> "$GITHUB_OUTPUT"
+          echo "mini=${origin}${path}/mini.html" >> "$GITHUB_OUTPUT"
+
+      - name: Supabase — база данных и сервер
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          APP_ORIGIN: ${{ steps.site.outputs.origin }}
+        run: |
+          npx supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase db push --yes
+          umask 077
+          secrets_file="$RUNNER_TEMP/function.env"
+          printf 'BOT_TOKEN=%s\nAPP_ORIGIN=%s\n' "$BOT_TOKEN" "$APP_ORIGIN" > "$secrets_file"
+          npx supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" --env-file "$secrets_file"
+          rm -f "$secrets_file"
+          npx supabase functions deploy kinpass-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt --use-api
+
+      - name: Проверить сервер
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          url="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/kinpass-api"
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 15 "$url" | grep -q '"service":"kinpass-api"'; then echo "Сервер отвечает."; exit 0; fi
+            sleep 5
+          done
+          echo "::error::Сервер kinpass-api не ответил. Supabase → Edge Functions → kinpass-api → Logs."
+          exit 1
+
+      - name: Собрать сайт
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        # Собирает только web/ в dist/ и останавливается, если в файлах найден секрет.
+        run: node scripts/launch.mjs --build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Опубликовать на GitHub Pages
+        id: pages
+        uses: actions/deploy-pages@v4
+
+      - name: Кнопка «Открыть Kinpass» в боте
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          MINI_URL: ${{ steps.site.outputs.mini }}
+        run: |
+          body=$(jq -n --arg url "$MINI_URL" '{menu_button:{type:"web_app",text:"Открыть Kinpass",web_app:{url:$url}}}')
+          curl -fsS --max-time 20 -H 'Content-Type: application/json' -d "$body" \
+            "https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton" | jq -e '.ok == true' > /dev/null
+          echo "Готово: ${MINI_URL}"

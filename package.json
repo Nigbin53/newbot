@@ -1,0 +1,20 @@
+{
+  "name": "kinpass-mini-app",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/launch.mjs --build",
+    "check": "node scripts/launch.mjs --check",
+    "test": "node --test tests/*.test.mjs",
+    "test:launch": "node --test tests/launcher.test.mjs",
+    "supabase": "supabase"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "supabase": "2.120.0"
+  }
+}
