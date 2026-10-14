@@ -104,3 +104,23 @@ body.mini-app{margin:0;min-height:100dvh;background:#0b0b0c}
 .mini-app .doc-art svg{max-height:230px}
 .mini-app .doc-photo-link{font-size:13px;gap:10px;min-height:44px;margin-top:16px}
 .mini-app .doc-photo-link svg{width:17px;height:17px}
+
+/* No sideways movement: page and screens scroll only vertically */
+html:has(body.mini-app),body.mini-app{overflow-x:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+.mini-app #app{overflow-x:hidden}
+.mini-app .phone-scroll{position:relative;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.mini-app .phone-scroll>*{max-width:100%}
+.mini-app .field input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;text-align:left;line-height:22px}
+.mini-app .field input[type=date]::-webkit-date-and-time-value{text-align:left}
+.mini-app .mobile-search input,.mini-app .search-input{font-size:16px}
+/* Screen transitions */
+.mini-app .phone-bottom{position:relative;z-index:3}
+.mini-app .screen-ghost{position:absolute;left:0;right:0;margin:0;pointer-events:none;overflow:hidden}
+.mini-app .screen-front{background:#0b0b0c;box-shadow:-14px 0 34px #000a}
+/* Press feedback */
+.mini-app button,.mini-app .btn{-webkit-tap-highlight-color:transparent;transition:transform .2s cubic-bezier(.32,.72,0,1),background-color .2s,border-color .2s,opacity .2s}
+.mini-app button:active,.mini-app .btn:active{transform:scale(.97)}
+.mini-app .phone-bottom button:active{transform:scale(.92)}
+.mini-app .modal{overflow-x:hidden;overscroll-behavior:contain}
+.mini-app .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:440px){.mini-app .form-grid{grid-template-columns:minmax(0,1fr)}}
