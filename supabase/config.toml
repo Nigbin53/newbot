@@ -3,3 +3,6 @@ project_id = "kinpass"
 [functions.kinpass-api]
 verify_jwt = false
 
+
+[functions.kinpass-bot]
+verify_jwt = false

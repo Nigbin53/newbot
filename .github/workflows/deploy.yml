@@ -70,15 +70,17 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           APP_ORIGIN: ${{ steps.site.outputs.origin }}
+          MINI_APP_URL: ${{ steps.site.outputs.mini }}
         run: |
           npx supabase link --project-ref "$SUPABASE_PROJECT_REF"
           npx supabase db push --yes
           umask 077
           secrets_file="$RUNNER_TEMP/function.env"
-          printf 'BOT_TOKEN=%s\nAPP_ORIGIN=%s\n' "$BOT_TOKEN" "$APP_ORIGIN" > "$secrets_file"
+          printf 'BOT_TOKEN=%s\nAPP_ORIGIN=%s\nMINI_APP_URL=%s\n' "$BOT_TOKEN" "$APP_ORIGIN" "$MINI_APP_URL" > "$secrets_file"
           npx supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" --env-file "$secrets_file"
           rm -f "$secrets_file"
           npx supabase functions deploy kinpass-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt --use-api
+          npx supabase functions deploy kinpass-bot --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt --use-api
 
       - name: Проверить сервер
         env:
@@ -111,12 +113,16 @@ jobs:
         id: pages
         uses: actions/deploy-pages@v4
 
-      - name: Кнопка «Открыть Kinpass» в боте
+      - name: Бот — кнопка меню и ответ на /start
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           MINI_URL: ${{ steps.site.outputs.mini }}
         run: |
-          body=$(jq -n --arg url "$MINI_URL" '{menu_button:{type:"web_app",text:"Открыть Kinpass",web_app:{url:$url}}}')
-          curl -fsS --max-time 20 -H 'Content-Type: application/json' -d "$body" \
-            "https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton" | jq -e '.ok == true' > /dev/null
+          telegram() { curl -fsS --max-time 20 -H 'Content-Type: application/json' -d "$2" "https://api.telegram.org/bot${BOT_TOKEN}/$1" | jq -e '.ok == true' > /dev/null; }
+          telegram setChatMenuButton "$(jq -n --arg url "$MINI_URL" '{menu_button:{type:"web_app",text:"Открыть Kinpass",web_app:{url:$url}}}')"
+          secret=$(node --input-type=module -e "import { webhookSecret } from './supabase/functions/kinpass-bot/bot.mjs'; console.log(await webhookSecret(process.env.BOT_TOKEN));")
+          echo "::add-mask::${secret}"
+          hook="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/kinpass-bot"
+          telegram setWebhook "$(jq -n --arg url "$hook" --arg secret "$secret" '{url:$url,secret_token:$secret,allowed_updates:["message"]}')"
           echo "Готово: ${MINI_URL}"
