@@ -135,3 +135,13 @@ html:has(body.mini-app),body.mini-app{overflow-x:hidden;overscroll-behavior:none
 .home-shortcut__close{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;color:#9999a5;align-self:start}
 .home-shortcut__close svg{width:15px;height:15px}
 .home-shortcut__add{grid-column:1/-1;min-height:44px;font-size:13px;border-radius:14px;justify-content:center}
+
+/* Home ("Обзор"): fixed screen without scrolling; the carousel is sized to the free height */
+.mini-app .phone-scroll.screen-home{display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:none}
+.mini-app .screen-home>*{flex:none}
+.mini-app .screen-home .family-stage{flex:1 1 auto;min-height:0;display:flex;align-items:center;margin:-8px -22px 0}
+.mini-app .screen-home .family-carousel{flex:none;width:100%;height:100%;margin:0}
+.mini-app .screen-home [data-home-banner]:empty{display:none}
+.mini-app .screen-home .home-shortcut{margin:8px 0 0;padding:13px 14px;gap:10px 12px}
+.mini-app .screen-home .home-shortcut__add{min-height:40px}
+.mini-app .home-add-first{min-height:48px;margin-top:8px;font-size:14px;border-radius:15px;justify-content:center}
