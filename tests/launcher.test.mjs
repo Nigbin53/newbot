@@ -191,3 +191,17 @@ test('redaction covers all configured secrets and token-bearing Telegram URLs', 
   const output = redact(Object.values(ENV).join(' ') + ` https://api.telegram.org/bot${ENV.BOT_TOKEN}/getMe`, ENV);
   for (const key of ['BOT_TOKEN', 'GITHUB_TOKEN', 'SUPABASE_ACCESS_TOKEN', 'SUPABASE_DB_PASSWORD']) assert.ok(!output.includes(ENV[key]));
 });
+
+test('public build adds content-hash versions to local scripts and styles in HTML', async () => {
+  const root = await fixture();
+  try {
+    await writeFile(join(root, 'web/mini.html'), '<link rel="stylesheet" href="style.css"><script src="https://telegram.org/js/telegram-web-app.js"></script><script defer src="config.js"></script><script defer src="app.js"></script>');
+    await writeFile(join(root, 'web/style.css'), 'body{}');
+    const { files } = await preparePublicFiles(root, config);
+    const mini = files.find(file => file.path === 'mini.html').data.toString();
+    assert.match(mini, /href="style\.css\?v=[a-f0-9]{10}"/);
+    assert.match(mini, /src="app\.js\?v=[a-f0-9]{10}"/);
+    assert.match(mini, /src="config\.js\?v=[a-f0-9]{10}"/);
+    assert.match(mini, /src="https:\/\/telegram\.org\/js\/telegram-web-app\.js"/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

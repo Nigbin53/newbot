@@ -61,7 +61,8 @@ jobs:
           origin="https://${owner}.github.io"
           if [ "${repo,,}" = "${owner}.github.io" ]; then path=""; else path="/${repo}"; fi
           echo "origin=${origin}" >> "$GITHUB_OUTPUT"
-          echo "mini=${origin}${path}/mini.html" >> "$GITHUB_OUTPUT"
+          # ?v=<commit> makes Telegram load the fresh page after every deploy (Pages caches for 10 min).
+          echo "mini=${origin}${path}/mini.html?v=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
 
       - name: Supabase — база данных и сервер
         env:

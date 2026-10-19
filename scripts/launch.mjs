@@ -53,6 +53,14 @@ export async function preparePublicFiles(root, config) {
   const existingConfig = files.findIndex(file => file.path === 'config.js');
   if (existingConfig >= 0) files.splice(existingConfig, 1);
   files.push({ path: 'config.js', data: publicConfig }, { path: '.nojekyll', data: Buffer.alloc(0) });
+  // Cache busting: GitHub Pages lets browsers keep files for 10 minutes, so every local
+  // script/stylesheet reference in HTML gets ?v=<content hash> and updates show at once.
+  const versions = new Map(files.map(file => [file.path, createHash('sha256').update(file.data).digest('hex').slice(0, 10)]));
+  for (const file of files) {
+    if (!file.path.endsWith('.html')) continue;
+    file.data = Buffer.from(file.data.toString('utf8').replace(/\b(src|href)="([A-Za-z0-9_./-]+\.(?:js|css))"/g,
+      (match, attribute, path) => versions.has(path) ? `${attribute}="${path}?v=${versions.get(path)}"` : match));
+  }
   files.sort((a, b) => a.path.localeCompare(b.path));
   const hash = createHash('sha256');
   for (const file of files) hash.update(file.path).update('\0').update(file.data).update('\0');
