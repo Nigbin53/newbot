@@ -1,10 +1,11 @@
 const encoder = new TextEncoder();
 
 export class ApiError extends Error {
-  constructor(status, code, message = code) {
+  constructor(status, code, message = code, detail = '') {
     super(message);
     this.status = status;
     this.code = code;
+    this.detail = detail;
   }
 }
 

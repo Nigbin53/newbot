@@ -1,8 +1,17 @@
 // Gemini API client (Generate Content REST) with Google Search + Google Maps grounding.
 // Used by kinpass-api (institution lookup) and kinpass-bot (answers to plain-text questions).
 export const DEFAULT_MODEL = 'gemini-3.8-flash';
+export const FALLBACK_MODEL = 'gemini-2.5-flash';
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GROUNDING = [{ google_search: {} }, { googleMaps: {} }];
+const SEARCH_ONLY = [{ google_search: {} }];
+
+export class GeminiError extends Error {
+  constructor(status, detail = '') {
+    super(`Gemini HTTP ${status}${detail ? `: ${detail}` : ''}`);
+    this.status = status;
+  }
+}
 
 export const INSTITUTION_FIELDS = ['name', 'city', 'address', 'phone', 'hours', 'lunch', 'reception', 'notes'];
 
@@ -34,17 +43,21 @@ export function parseJsonObject(text) {
 }
 
 export function createGemini({ apiKey, model = DEFAULT_MODEL, fetcher = fetch, timeout = 28000 }) {
-  async function generate(prompt, system) {
-    const response = await fetcher(`${ENDPOINT}/${encodeURIComponent(model)}:generateContent`, {
+  async function call(modelName, tools, prompt, system) {
+    const response = await fetcher(`${ENDPOINT}/${encodeURIComponent(modelName)}:generateContent`, {
       method: 'POST', signal: AbortSignal.timeout(timeout),
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        tools: GROUNDING,
+        tools,
       }),
     });
-    if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
+    if (!response.ok) {
+      let detail = '';
+      try { detail = String((await response.json())?.error?.message || '').replace(/\s+/g, ' ').slice(0, 200); } catch { /* no JSON body */ }
+      throw new GeminiError(response.status, detail);
+    }
     const data = await response.json();
     const candidate = data?.candidates?.[0];
     const text = (candidate?.content?.parts || []).map(part => typeof part.text === 'string' ? part.text : '').join('').trim();
@@ -60,10 +73,26 @@ export function createGemini({ apiKey, model = DEFAULT_MODEL, fetcher = fetch, t
     }
     return { text, sources };
   }
+  // Maps grounding or a model name may be unavailable for a key/region: fall back step by step.
+  async function generate(prompt, system) {
+    const attempts = [[model, GROUNDING], [model, SEARCH_ONLY]];
+    if (model !== FALLBACK_MODEL) attempts.push([FALLBACK_MODEL, SEARCH_ONLY]);
+    let last;
+    for (const [modelName, tools] of attempts) {
+      try { return await call(modelName, tools, prompt, system); }
+      catch (error) {
+        last = error;
+        if (!(error instanceof GeminiError) || ![400, 403, 404].includes(error.status)) throw error;
+      }
+    }
+    throw last;
+  }
   return {
     async lookupInstitution({ query, city }) {
       const { text, sources } = await generate(`Найди учреждение: «${query}»${city ? `, город ${city}` : ''}.`, LOOKUP_SYSTEM);
-      return { institution: parseJsonObject(text), sources };
+      let institution = {};
+      try { institution = parseJsonObject(text); } catch { /* the model found nothing usable */ }
+      return { institution, sources };
     },
     async answer({ question, context }) {
       return await generate(question, `${ANSWER_SYSTEM}\n\n${context}`);

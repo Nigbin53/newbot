@@ -32,7 +32,7 @@
   };
   class CloudError extends Error {
     constructor(code, status = 0, state = {}) {
-      super(messages[code] || (status === 401 ? messages.AUTH_EXPIRED : 'Не удалось сохранить данные. Проверьте соединение и повторите действие.'));
+      super((messages[code] || (status === 401 ? messages.TELEGRAM_AUTH_EXPIRED : 'Не удалось сохранить данные. Проверьте соединение и повторите действие.')) + (typeof state.detail === 'string' && state.detail ? ` (${state.detail.slice(0, 240)})` : ''));
       this.code = code;
       this.status = status;
       this.documents = state.documents;

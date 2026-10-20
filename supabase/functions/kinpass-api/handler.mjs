@@ -89,9 +89,9 @@ export function createHandler({ botToken, appOrigin, backend, ai = null, maxAgeS
         if (!await backend.takeAi(user.id, AI_DAILY_LIMIT)) throw new ApiError(429, 'AI_LIMIT');
         let found;
         try { found = await ai.lookupInstitution(lookup); }
-        catch { throw new ApiError(502, 'AI_UNAVAILABLE'); }
+        catch (error) { throw new ApiError(502, 'AI_UNAVAILABLE', 'AI_UNAVAILABLE', String(error?.message || '').slice(0, 240)); }
         const institution = cleanInstitution(found?.institution);
-        if (!institution.address && !institution.phone && !institution.hours) throw new ApiError(404, 'AI_NOT_FOUND');
+        if (!['address', 'phone', 'hours', 'reception', 'notes'].some(key => institution[key])) throw new ApiError(404, 'AI_NOT_FOUND');
         const sources = (Array.isArray(found?.sources) ? found.sources : [])
           .filter(source => typeof source?.uri === 'string' && /^https:\/\//.test(source.uri))
           .slice(0, 5).map(source => ({ title: String(source.title || 'Источник').slice(0, 120), uri: source.uri.slice(0, 500), maps: Boolean(source.maps) }));
@@ -110,7 +110,7 @@ export function createHandler({ botToken, appOrigin, backend, ai = null, maxAgeS
       }
       throw new ApiError(400, 'INVALID_ACTION');
     } catch (error) {
-      if (error instanceof ApiError) return response({ error: error.code }, error.status);
+      if (error instanceof ApiError) return response({ error: error.code, ...(error.detail ? { detail: error.detail } : {}) }, error.status);
       // Do not log initData, documents, service keys, or signed URLs.
       return response({ error: 'INTERNAL_ERROR' }, 500);
     }

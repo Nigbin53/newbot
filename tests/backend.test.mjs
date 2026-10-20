@@ -382,3 +382,24 @@ test('Gemini client sends grounded request and parses JSON answer and sources', 
   assert.match(summary, /обед: 12:00–13:00/);
 });
 
+
+test('Gemini falls back: Maps tool rejected → search only → fallback model; errors carry Google detail', async () => {
+  const calls = [];
+  const replies = [
+    new Response(JSON.stringify({ error: { message: 'Grounding with Google Maps is not enabled' } }), { status: 400 }),
+    new Response(JSON.stringify({ error: { message: 'models/gemini-x is not found' } }), { status: 404 }),
+    new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Не нашёл ничего.' }] } }] })),
+  ];
+  const gemini = createGemini({ apiKey: 'k', model: 'gemini-x', fetcher: async (url, options) => { calls.push({ url, tools: JSON.parse(options.body).tools }); return replies.shift(); } });
+  const result = await gemini.lookupInstitution({ query: 'ЗАГС Слободзея', city: '' });
+  assert.deepEqual(calls.map(call => [call.url.split('/').pop(), call.tools.length]), [['gemini-x:generateContent', 2], ['gemini-x:generateContent', 1], ['gemini-2.5-flash:generateContent', 1]]);
+  assert.deepEqual(result.institution, {});
+  const denied = createGemini({ apiKey: 'k', fetcher: async () => new Response(JSON.stringify({ error: { message: 'API key not valid' } }), { status: 403 }) });
+  await assert.rejects(denied.lookupInstitution({ query: 'ЗАГС' }), /Gemini HTTP 403: API key not valid/);
+  const { request } = setup({ async lookupInstitution() { throw new Error('Gemini HTTP 429: Quota exceeded'); } });
+  const failed = await request('lookup', { query: 'ЗАГС' });
+  assert.equal(failed.status, 502);
+  assert.deepEqual(failed.body, { error: 'AI_UNAVAILABLE', detail: 'Gemini HTTP 429: Quota exceeded' });
+  const partial = setup({ async lookupInstitution() { return { institution: { name: 'ЗАГС', notes: 'Приём по записи' }, sources: [] }; } });
+  assert.equal((await partial.request('lookup', { query: 'ЗАГС' })).status, 200);
+});
