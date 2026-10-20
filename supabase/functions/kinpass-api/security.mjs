@@ -65,7 +65,10 @@ export const MAX_UPLOADS = 120;
 export const MAX_STORAGE_BYTES = 330 * 1024 * 1024;
 export const MAX_REQUEST_BYTES = 4 * MAX_FILE_BYTES / 3 + 65536;
 const safeId = /^[A-Za-z0-9_-]{1,80}$/;
-const documentKeys = new Set(['id', 'name', 'owner', 'city', 'status', 'issued', 'expires', 'days', 'requested', 'expected', 'file', 'fileName']);
+const documentKeys = new Set(['id', 'name', 'owner', 'city', 'status', 'issued', 'expires', 'days', 'requested', 'expected', 'file', 'fileName', 'institution']);
+const institutionKeys = new Set(['id', 'name', 'city', 'address', 'phone', 'hours', 'lunch', 'reception', 'notes', 'source', 'checked']);
+export const MAX_INSTITUTIONS = 100;
+export const AI_DAILY_LIMIT = 40;
 
 export function validateDocumentId(id) {
   if (typeof id !== 'string' || !safeId.test(id)) throw new ApiError(400, 'INVALID_DOCUMENT_ID');
@@ -122,11 +125,61 @@ export function validateDocuments(value) {
       issued: date(input.issued), expires: date(input.expires), days: input.days,
       requested: date(input.requested), expected: date(input.expected), file: text(input.file, 250),
       fileName: input.file ? validateFileName(input.fileName) : '',
+      institution: input.institution ? validateDocumentId(input.institution) : '',
     };
     if (document.issued && document.expires && document.expires < document.issued) throw new ApiError(400, 'INVALID_DATE_RANGE');
     if (document.requested && document.expected && document.expected < document.requested) throw new ApiError(400, 'INVALID_DATE_RANGE');
     return document;
   });
+}
+
+const LIMITS = { name: 200, city: 120, address: 300, phone: 60, hours: 300, lunch: 120, reception: 300, notes: 1000 };
+
+function link(value) {
+  const result = text(value, 500);
+  if (result && !/^https:\/\/[^\s]+$/.test(result)) throw new ApiError(400, 'INVALID_INSTITUTION');
+  return result;
+}
+
+export function validateInstitutions(value) {
+  if (!Array.isArray(value) || value.length > MAX_INSTITUTIONS) throw new ApiError(400, 'INVALID_INSTITUTIONS');
+  const ids = new Set();
+  return value.map(input => {
+    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => !institutionKeys.has(key))) {
+      throw new ApiError(400, 'INVALID_INSTITUTION');
+    }
+    const id = validateDocumentId(input.id);
+    if (ids.has(id)) throw new ApiError(400, 'INVALID_INSTITUTION');
+    ids.add(id);
+    let result;
+    try {
+      result = { id, name: text(input.name, LIMITS.name, true) };
+      for (const key of ['city', 'address', 'phone', 'hours', 'lunch', 'reception', 'notes']) result[key] = text(input[key], LIMITS[key]);
+      result.source = link(input.source);
+      result.checked = date(input.checked);
+    } catch (error) {
+      if (error instanceof ApiError && error.code !== 'INVALID_INSTITUTION') throw new ApiError(400, 'INVALID_INSTITUTION');
+      throw error;
+    }
+    return result;
+  });
+}
+
+// AI output is untrusted text: keep only known string fields, trimmed and length-limited.
+export function cleanInstitution(raw) {
+  const result = {};
+  for (const key of ['name', 'city', 'address', 'phone', 'hours', 'lunch', 'reception', 'notes']) {
+    const value = typeof raw?.[key] === 'string' ? raw[key] : '';
+    result[key] = value.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, LIMITS[key]);
+  }
+  return result;
+}
+
+export function validateLookup(body) {
+  const query = typeof body?.query === 'string' ? body.query.replace(/\s+/g, ' ').trim() : '';
+  const city = typeof body?.city === 'string' ? body.city.replace(/\s+/g, ' ').trim() : '';
+  if (query.length < 2 || query.length > 200 || city.length > 120) throw new ApiError(400, 'INVALID_LOOKUP');
+  return { query, city };
 }
 
 export function validateRevision(value) {

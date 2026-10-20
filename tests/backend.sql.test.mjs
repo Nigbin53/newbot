@@ -1,6 +1,6 @@
 import { test, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
 const db = new PGlite();
@@ -27,11 +27,13 @@ before(async () => {
     create policy existing_broad_access on storage.objects for all to anon, authenticated
       using (true) with check (true);
   `);
-  const migration = await readFile(new URL('../supabase/migrations/20261011000100_kinpass.sql', import.meta.url), 'utf8');
-  await db.exec(migration);
+  const directory = new URL('../supabase/migrations/', import.meta.url);
+  for (const name of (await readdir(directory)).filter(name => name.endsWith('.sql')).sort()) {
+    await db.exec(await readFile(new URL(name, directory), 'utf8'));
+  }
 });
 
-beforeEach(async () => { await db.exec('reset role; truncate public.kinpass_uploads, public.kinpass_state, storage.objects restart identity cascade;'); });
+beforeEach(async () => { await db.exec('reset role; truncate public.kinpass_uploads, public.kinpass_state, public.kinpass_ai_usage, storage.objects restart identity cascade;'); });
 after(async () => { await db.close(); });
 
 async function asRole(role, work) {
@@ -39,9 +41,9 @@ async function asRole(role, work) {
   try { return await work(); }
   finally { await db.exec('reset role'); }
 }
-async function save(owner, documents, revision) {
+async function save(owner, documents, revision, institutions = null) {
   return await asRole('service_role', async () => {
-    const result = await db.query('select public.kinpass_save_state($1, $2::jsonb, $3) as result', [owner, JSON.stringify(documents), revision]);
+    const result = await db.query('select public.kinpass_save_state($1, $2::jsonb, $3, $4::jsonb) as result', [owner, JSON.stringify(documents), revision, institutions === null ? null : JSON.stringify(institutions)]);
     return result.rows[0].result;
   });
 }
@@ -147,7 +149,7 @@ test('Anon and authenticated cannot read/write app tables or execute privileged 
       'select * from public.kinpass_state',
       'select * from public.kinpass_uploads',
       "insert into public.kinpass_state(telegram_user_id) values(999)",
-      "select public.kinpass_save_state(101,'[]'::jsonb,1)",
+      "select public.kinpass_save_state(101,'[]'::jsonb,1,null)",
       "select public.kinpass_register_upload(101,'d1','bad','bad.jpg','image/jpeg',1)",
     ]) await assert.rejects(asRole(role, () => db.query(statement)), { code: '42501' });
   }
@@ -163,3 +165,29 @@ test('Restrictive Storage policy blocks this private bucket despite existing all
   const server = await asRole('service_role', () => db.query("select name from storage.objects where bucket_id='kinpass-documents'"));
   assert.deepEqual(server.rows, [{ name: 'private.jpg' }]);
 });
+
+test('Institutions migration: saved with documents under one revision; null keeps the list; conflict returns it', async () => {
+  const place = { id: 'i1', name: 'ЗАГС', city: 'Бельцы' };
+  const first = await save(101, [doc({ institution: 'i1' })], 0, [place]);
+  assert.equal(first.ok, true);
+  assert.deepEqual(first.institutions, [place]);
+  const kept = await save(101, [doc()], 1);
+  assert.deepEqual(kept.institutions, [place]);
+  const stale = await save(101, [doc()], 0, []);
+  assert.equal(stale.ok, false);
+  assert.deepEqual(stale.institutions, [place]);
+  await assert.rejects(save(101, [doc()], 2, { not: 'array' }));
+});
+
+test('AI daily quota is counted per account and blocked for anon/authenticated', async () => {
+  const take = (owner, limit) => asRole('service_role', async () => (await db.query('select public.kinpass_ai_take($1, $2) as ok', [owner, limit])).rows[0].ok);
+  assert.equal(await take(101, 2), true);
+  assert.equal(await take(101, 2), true);
+  assert.equal(await take(101, 2), false);
+  assert.equal(await take(202, 2), true);
+  for (const role of ['anon', 'authenticated']) {
+    await assert.rejects(asRole(role, () => db.query('select public.kinpass_ai_take(101, 100)')), { code: '42501' });
+    await assert.rejects(asRole(role, () => db.query('select * from public.kinpass_ai_usage')), { code: '42501' });
+  }
+});
+

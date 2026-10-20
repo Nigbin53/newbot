@@ -4,7 +4,8 @@ import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createHandler } from '../supabase/functions/kinpass-api/handler.mjs';
 import { createBackend } from '../supabase/functions/kinpass-api/backend.mjs';
-import { verifyInitData, validateDocuments, decodeUpload, MAX_FILE_BYTES } from '../supabase/functions/kinpass-api/security.mjs';
+import { verifyInitData, validateDocuments, validateInstitutions, cleanInstitution, decodeUpload, MAX_FILE_BYTES, AI_DAILY_LIMIT } from '../supabase/functions/kinpass-api/security.mjs';
+import { createGemini, parseJsonObject, describeCase } from '../supabase/functions/_shared/gemini.mjs';
 
 const token = '123456:TEST_ONLY_NOT_A_REAL_BOT_TOKEN';
 const origin = 'https://example.github.io';
@@ -35,7 +36,7 @@ class FakeBackend {
   loadCalls = [];
   async load(id) {
     this.loadCalls.push(id);
-    return structuredClone(this.states.get(id) || { documents: [], revision: 0 });
+    return structuredClone(this.states.get(id) || { documents: [], institutions: [], revision: 0 });
   }
   async uploads(id, paths) {
     return paths.map(path => this.registry.get(path)).filter(item => item?.telegram_user_id === id).map(item => structuredClone(item));
@@ -43,8 +44,15 @@ class FakeBackend {
   async uploadUsage(id) {
     return [...this.registry.values()].filter(upload => upload.telegram_user_id === id);
   }
-  async save(id, documents, revision) {
-    const state = this.states.get(id) || { documents: [], revision: 0 };
+  aiUsage = new Map();
+  async takeAi(id, limit) {
+    const used = this.aiUsage.get(id) || 0;
+    if (used >= limit) return false;
+    this.aiUsage.set(id, used + 1);
+    return true;
+  }
+  async save(id, documents, revision, institutions = null) {
+    const state = this.states.get(id) || { documents: [], institutions: [], revision: 0 };
     if (state.revision !== revision) return { ok: false, ...structuredClone(state) };
     for (const item of documents.filter(item => item.file)) {
       const upload = this.registry.get(item.file);
@@ -54,7 +62,7 @@ class FakeBackend {
     }
     const cleanup = state.documents.map(item => item.file).filter(path => path && !documents.some(item => item.file === path));
     for (const path of cleanup) this.registry.delete(path);
-    const next = { documents: structuredClone(documents), revision: revision + 1 };
+    const next = { documents: structuredClone(documents), institutions: structuredClone(institutions ?? state.institutions ?? []), revision: revision + 1 };
     this.states.set(id, next);
     return { ok: true, ...structuredClone(next), cleanup };
   }
@@ -69,10 +77,10 @@ class FakeBackend {
   async sign(path) { this.signedPaths.push(path); return `https://storage.example/signed/${path}?token=test`; }
 }
 
-function setup() {
+function setup(ai = null) {
   const backend = new FakeBackend();
   let sequence = 0;
-  const handler = createHandler({ botToken: token, appOrigin: origin, backend, now: () => now,
+  const handler = createHandler({ botToken: token, appOrigin: origin, backend, ai, now: () => now,
     uuid: () => `00000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}`,
   });
   const request = async (action, data = {}, userId = 101, requestOrigin = origin) => {
@@ -121,7 +129,7 @@ test('Unauthenticated GET readiness returns only service status without accessin
   const { backend, handler } = setup();
   const result = await handler(new Request('https://api.example/functions/v1/kinpass-api'));
   assert.equal(result.status, 200);
-  assert.deepEqual(await result.json(), { ok: true, service: 'kinpass-api' });
+  assert.deepEqual(await result.json(), { ok: true, service: 'kinpass-api', ai: false });
   assert.deepEqual(backend.loadCalls, []);
 });
 
@@ -129,7 +137,7 @@ test('Separate forged client user ID cannot read or overwrite another Telegram a
   const { request } = setup();
   assert.equal((await request('save', { documents: [document()], revision: 0 })).status, 200);
   const stranger = await request('load', { userId: '101', telegram_user_id: '101' }, 202);
-  assert.deepEqual(stranger.body, { documents: [], revision: 0 });
+  assert.deepEqual(stranger.body, { documents: [], institutions: [], revision: 0 });
   assert.equal((await request('save', { documents: [document('other')], revision: 0, userId: '101' }, 202)).status, 200);
   const owner = await request('load');
   assert.equal(owner.body.documents[0].id, 'd1');
@@ -297,3 +305,80 @@ test('Migration blocks direct client access and RPC execution; CAS uses an owner
   assert.match(sql, /where telegram_user_id = p_user_id for update/i);
   assert.match(sql, /if v_state\.revision <> p_revision then/i);
 });
+
+const place = (id = 'i1', extra = {}) => ({ id, name: 'Отдел ЗАГС Бельцы', city: 'Бельцы', address: 'ул. Индепенденцей, 1',
+  phone: '+373 231 00000', hours: 'Пн–Пт 8:00–17:00', lunch: '12:00–13:00', reception: 'Вт, Чт 9:00–12:00', notes: '',
+  source: 'https://maps.google.com/?cid=1', checked: '2026-10-20', ...extra });
+
+test('Institutions are validated, saved with documents in one revision and returned on load', async () => {
+  const { request } = setup();
+  const saved = await request('save', { documents: [document('d1', { institution: 'i1' })], institutions: [place()], revision: 0 });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.revision, 1);
+  assert.equal(saved.body.documents[0].institution, 'i1');
+  assert.equal(saved.body.institutions[0].name, 'Отдел ЗАГС Бельцы');
+  const loaded = await request('load');
+  assert.deepEqual(loaded.body.institutions, saved.body.institutions);
+  // A save without the institutions field keeps the stored list.
+  const kept = await request('save', { documents: [document('d1')], revision: 1 });
+  assert.equal(kept.body.institutions.length, 1);
+  assert.equal(kept.body.documents[0].institution, '');
+});
+
+test('Invalid institutions are rejected: unknown keys, missing name, bad links, duplicates, too many', () => {
+  assert.throws(() => validateInstitutions([place('i1', { extra: 1 })]), { code: 'INVALID_INSTITUTION' });
+  assert.throws(() => validateInstitutions([place('i1', { name: '  ' })]), { code: 'INVALID_INSTITUTION' });
+  assert.throws(() => validateInstitutions([place('i1', { source: 'javascript:alert(1)' })]), { code: 'INVALID_INSTITUTION' });
+  assert.throws(() => validateInstitutions([place('i1', { checked: '2026-02-31' })]), { code: 'INVALID_INSTITUTION' });
+  assert.throws(() => validateInstitutions([place('i1'), place('i1')]), { code: 'INVALID_INSTITUTION' });
+  assert.throws(() => validateInstitutions(Array.from({ length: 101 }, (_, i) => place(`i${i}`))), { code: 'INVALID_INSTITUTIONS' });
+  assert.throws(() => validateDocuments([document('d1', { institution: '../x' })]), { code: 'INVALID_DOCUMENT_ID' });
+  assert.equal(validateInstitutions([place('i1', { source: '' })])[0].source, '');
+});
+
+test('AI lookup: not configured, success with cleaned fields and https sources, daily limit, failures', async () => {
+  assert.equal((await setup().request('lookup', { query: 'ЗАГС', city: 'Бельцы' })).body.error, 'AI_NOT_CONFIGURED');
+  const calls = [];
+  const ai = { async lookupInstitution(input) {
+    calls.push(input);
+    return { institution: { name: 'Starea Civilă Bălți', city: 'Бельцы', address: 'str.\n1', phone: '+373', hours: 'Пн–Пт', evil: '<script>', notes: 5 },
+      sources: [{ title: 'Google Maps', uri: 'https://maps.google.com/?cid=1', maps: true }, { title: 'bad', uri: 'javascript:1' }] };
+  } };
+  const { request, backend } = setup(ai);
+  assert.equal((await request('lookup', { query: 'x' })).body.error, 'INVALID_LOOKUP');
+  const found = await request('lookup', { query: '  ЗАГС  Бельцы ', city: 'Бельцы' });
+  assert.equal(found.status, 200);
+  assert.deepEqual(calls[0], { query: 'ЗАГС Бельцы', city: 'Бельцы' });
+  assert.equal(found.body.institution.address, 'str. 1');
+  assert.equal(found.body.institution.notes, '');
+  assert.equal('evil' in found.body.institution, false);
+  assert.deepEqual(found.body.sources, [{ title: 'Google Maps', uri: 'https://maps.google.com/?cid=1', maps: true }]);
+  backend.aiUsage.set('101', AI_DAILY_LIMIT);
+  assert.equal((await request('lookup', { query: 'ЗАГС' })).body.error, 'AI_LIMIT');
+  const broken = setup({ async lookupInstitution() { throw new Error('down'); } });
+  assert.equal((await broken.request('lookup', { query: 'ЗАГС' })).body.error, 'AI_UNAVAILABLE');
+  const empty = setup({ async lookupInstitution() { return { institution: { name: 'X' }, sources: [] }; } });
+  assert.equal((await empty.request('lookup', { query: 'ЗАГС' })).body.error, 'AI_NOT_FOUND');
+});
+
+test('Gemini client sends grounded request and parses JSON answer and sources', async () => {
+  let sent;
+  const gemini = createGemini({ apiKey: 'test-key', model: 'gemini-test', fetcher: async (url, options) => {
+    sent = { url, options, body: JSON.parse(options.body) };
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '```json\n{"name":"ЗАГС","phone":"+373 1"}\n```' }] },
+      groundingMetadata: { groundingChunks: [{ maps: { uri: 'https://maps.google.com/?cid=7', title: 'ЗАГС' } }, { web: { uri: 'http://insecure' } }, { maps: { uri: 'https://maps.google.com/?cid=7' } }] } }] }));
+  } });
+  const result = await gemini.lookupInstitution({ query: 'ЗАГС', city: 'Бельцы' });
+  assert.match(sent.url, /\/models\/gemini-test:generateContent$/);
+  assert.equal(sent.options.headers['x-goog-api-key'], 'test-key');
+  assert.deepEqual(sent.body.tools, [{ google_search: {} }, { googleMaps: {} }]);
+  assert.equal(result.institution.phone, '+373 1');
+  assert.deepEqual(result.sources, [{ title: 'ЗАГС', uri: 'https://maps.google.com/?cid=7', maps: true }]);
+  assert.throws(() => parseJsonObject('нет данных'));
+  assert.deepEqual(cleanInstitution({ name: 'a'.repeat(500), phone: 7 }).phone, '');
+  const summary = describeCase({ documents: [document('d1', { institution: 'i1', status: 'pending', expected: '2026-11-01' })], institutions: [place()] }, '2026-10-20');
+  assert.match(summary, /Сегодня: 2026-10-20/);
+  assert.match(summary, /в работе.*ожидается 2026-11-01.*учреждение: Отдел ЗАГС Бельцы/);
+  assert.match(summary, /обед: 12:00–13:00/);
+});
+

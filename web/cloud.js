@@ -21,7 +21,14 @@
     INVALID_ATTACHMENT: 'Файл не найден в деле. Загрузите его заново.',
     FILE_NOT_FOUND: 'Файл не найден. Загрузите его заново.',
     STORAGE_LIMIT: 'Хранилище заполнено. Удалите ненужные документы с вложениями и повторите загрузку.',
-    DOCUMENT_NOT_FOUND: 'Документ не найден. Обновите дело.'
+    DOCUMENT_NOT_FOUND: 'Документ не найден. Обновите дело.',
+    INVALID_INSTITUTION: 'Проверьте название, город и ссылку учреждения.',
+    INVALID_INSTITUTIONS: 'Можно сохранить до 100 учреждений.',
+    INVALID_LOOKUP: 'Введите название учреждения — хотя бы 2 буквы.',
+    AI_NOT_CONFIGURED: 'Помощник ИИ ещё не подключён: добавьте GEMINI_API_KEY в секреты GitHub.',
+    AI_LIMIT: 'Лимит запросов к ИИ на сегодня исчерпан. Попробуйте завтра.',
+    AI_UNAVAILABLE: 'ИИ сейчас не ответил. Попробуйте ещё раз через минуту.',
+    AI_NOT_FOUND: 'ИИ не нашёл данных. Уточните название или город.'
   };
   class CloudError extends Error {
     constructor(code, status = 0, state = {}) {
@@ -29,6 +36,7 @@
       this.code = code;
       this.status = status;
       this.documents = state.documents;
+      this.institutions = state.institutions;
       this.revision = state.revision;
     }
   }
@@ -71,12 +79,13 @@
     }
     validateState(state) {
       if (!Array.isArray(state.documents) || !Number.isSafeInteger(state.revision) || state.revision < 0) throw new Error('Сервер вернул неполные данные. Повторите загрузку.');
+      if (!Array.isArray(state.institutions)) state.institutions = [];
     }
-    async save(documents) {
+    async save(documents, institutions) {
       if (this.saving) throw new Error('Предыдущее изменение ещё сохраняется.');
       this.saving = true;
       try {
-        const state = await this.request('save', { documents, revision: this.revision });
+        const state = await this.request('save', { documents, ...(institutions ? { institutions } : {}), revision: this.revision });
         this.validateState(state);
         this.revision = state.revision;
         return state;
@@ -87,6 +96,7 @@
     }
     upload(documentId, fileName, dataUrl) { return this.request('upload', { documentId, fileName, dataUrl }); }
     file(documentId) { return this.request('file', { documentId }); }
+    lookup(query, city) { return this.request('lookup', { query, city }); }
   }
   window.KinpassCloud = KinpassCloud;
 })();

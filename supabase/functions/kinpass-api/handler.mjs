@@ -1,10 +1,10 @@
 import {
   ApiError, verifyInitData, readJson, validateDocuments, validateRevision,
-  validateDocumentId, validateFileName, decodeUpload, isOwnedPath,
-  MAX_UPLOADS, MAX_STORAGE_BYTES,
+  validateDocumentId, validateFileName, decodeUpload, isOwnedPath, validateInstitutions,
+  cleanInstitution, validateLookup, MAX_UPLOADS, MAX_STORAGE_BYTES, AI_DAILY_LIMIT,
 } from './security.mjs';
 
-export function createHandler({ botToken, appOrigin, backend, maxAgeSeconds = 3600, now = () => Date.now(), uuid = () => crypto.randomUUID() }) {
+export function createHandler({ botToken, appOrigin, backend, ai = null, maxAgeSeconds = 3600, now = () => Date.now(), uuid = () => crypto.randomUUID() }) {
   const headers = {
     'Access-Control-Allow-Origin': appOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -19,7 +19,7 @@ export function createHandler({ botToken, appOrigin, backend, maxAgeSeconds = 36
   return async function handle(request) {
     // Readiness exposes no database state or credentials. index.ts refuses to
     // start when the required secrets are missing, so this checks configuration.
-    if (request.method === 'GET') return response({ ok: true, service: 'kinpass-api' });
+    if (request.method === 'GET') return response({ ok: true, service: 'kinpass-api', ai: Boolean(ai) });
     if (request.headers.get('origin') !== appOrigin) {
       return new Response(JSON.stringify({ error: 'ORIGIN_NOT_ALLOWED' }), {
         status: 403, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', Vary: 'Origin' },
@@ -36,6 +36,7 @@ export function createHandler({ botToken, appOrigin, backend, maxAgeSeconds = 36
       if (body.action === 'save') {
         const documents = validateDocuments(body.documents);
         const revision = validateRevision(body.revision);
+        const institutions = body.institutions === undefined ? null : validateInstitutions(body.institutions);
         const attachments = documents.filter(document => document.file);
         if (attachments.some(document => !isOwnedPath(document.file, user.id, document.id))) {
           throw new ApiError(400, 'INVALID_ATTACHMENT');
@@ -47,13 +48,13 @@ export function createHandler({ botToken, appOrigin, backend, maxAgeSeconds = 36
         }
         // The RPC repeats attachment validation under the same row lock as the
         // compare-and-swap so concurrent requests cannot resurrect removed files.
-        const saved = await backend.save(user.id, documents, revision);
+        const saved = await backend.save(user.id, documents, revision, institutions);
         if (!saved.ok) {
           if (saved.error === 'INVALID_ATTACHMENT') throw new ApiError(400, 'INVALID_ATTACHMENT');
-          return response({ error: 'REVISION_CONFLICT', documents: saved.documents, revision: saved.revision }, 409);
+          return response({ error: 'REVISION_CONFLICT', documents: saved.documents, institutions: saved.institutions || [], revision: saved.revision }, 409);
         }
         await clean(saved.cleanup);
-        return response({ documents: saved.documents, revision: saved.revision });
+        return response({ documents: saved.documents, institutions: saved.institutions || [], revision: saved.revision });
       }
       if (body.action === 'upload') {
         const documentId = validateDocumentId(body.documentId);
@@ -81,6 +82,20 @@ export function createHandler({ botToken, appOrigin, backend, maxAgeSeconds = 36
           throw error;
         }
         return response({ file: path, fileName });
+      }
+      if (body.action === 'lookup') {
+        const lookup = validateLookup(body);
+        if (!ai) throw new ApiError(503, 'AI_NOT_CONFIGURED');
+        if (!await backend.takeAi(user.id, AI_DAILY_LIMIT)) throw new ApiError(429, 'AI_LIMIT');
+        let found;
+        try { found = await ai.lookupInstitution(lookup); }
+        catch { throw new ApiError(502, 'AI_UNAVAILABLE'); }
+        const institution = cleanInstitution(found?.institution);
+        if (!institution.address && !institution.phone && !institution.hours) throw new ApiError(404, 'AI_NOT_FOUND');
+        const sources = (Array.isArray(found?.sources) ? found.sources : [])
+          .filter(source => typeof source?.uri === 'string' && /^https:\/\//.test(source.uri))
+          .slice(0, 5).map(source => ({ title: String(source.title || 'Источник').slice(0, 120), uri: source.uri.slice(0, 500), maps: Boolean(source.maps) }));
+        return response({ institution, sources });
       }
       if (body.action === 'file') {
         const documentId = validateDocumentId(body.documentId);
