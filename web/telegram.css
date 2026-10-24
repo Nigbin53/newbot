@@ -1,0 +1,30 @@
+/* «Путь» inside Telegram: full screen instead of the showcase phone frame. */
+html:has(body.tg-app),body.tg-app{height:100%;margin:0;background:var(--paper);overflow:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+.tg-app .phone{width:100%;max-width:560px;margin:0 auto;height:var(--tg-viewport-stable-height,100dvh);min-height:420px;border:0;border-radius:0;box-shadow:none;padding-top:var(--safe-top,0px)}
+.tg-app .phone:after{display:none}
+.tg-app .sheet-layer{border-radius:0}
+.tg-app .sheet{max-height:92%;padding-bottom:max(24px,calc(env(safe-area-inset-bottom,0px) + 16px),calc(var(--safe-bottom,0px) + 16px))}
+.tg-app .app-content{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.tg-app .bottom-nav{height:auto;min-height:66px;padding-bottom:max(10px,env(safe-area-inset-bottom,0px),var(--safe-bottom,0px))}
+.tg-app .toast{bottom:calc(90px + var(--safe-bottom,0px))}
+/* iOS zooms into inputs smaller than 16px */
+.tg-app input,.tg-app select,.tg-app textarea,.tg-app .text-input{font-size:16px}
+.tg-app .app-brand{cursor:default}
+/* Loading / error gate */
+.tg-gate{min-height:60vh;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:12px 4px}
+.tg-gate h1{font-size:28px;line-height:1.15;letter-spacing:-1px;font-weight:600;color:var(--ink)}
+.tg-gate p{font-size:14px;line-height:1.65;color:var(--muted)}
+.tg-gate .primary-button{margin-top:10px;align-self:flex-start}
+.tg-loading{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.tg-loading:before{content:'';width:14px;height:14px;border-radius:50%;border:2px solid #cfd8c8;border-top-color:var(--forest);animation:tg-spin .8s linear infinite}
+@keyframes tg-spin{to{transform:rotate(360deg)}}
+/* Saved institutions and AI fill in the visit editor */
+.tg-app .place-picker{margin-top:14px}
+.tg-app .ai-fill-row{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.tg-app .ai-status{font-size:12px;line-height:1.5;color:var(--muted)}
+.tg-app .ai-status.loading{color:var(--forest);animation:tg-pulse 1.2s ease-in-out infinite}
+.tg-app .ai-sources{display:flex;flex-wrap:wrap;gap:6px}
+.tg-app .ai-sources:empty{display:none}
+.tg-app .ai-source{font-size:12px;color:var(--forest);background:#eef2ea;border-radius:10px;padding:6px 10px}
+@keyframes tg-pulse{50%{opacity:.5}}
+.tg-app .sync-note{font-size:11px;color:var(--muted);text-align:center;margin-top:14px}

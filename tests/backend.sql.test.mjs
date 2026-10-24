@@ -191,3 +191,19 @@ test('AI daily quota is counted per account and blocked for anon/authenticated',
   }
 });
 
+test('«Путь» state is saved with compare-and-swap and keeps the earlier Kinpass columns', async () => {
+  const savePut = (owner, state, revision) => asRole('service_role', async () => (await db.query('select public.kinpass_save_put($1, $2::jsonb, $3) as r', [owner, JSON.stringify(state), revision])).rows[0].r);
+  await save(101, [doc()], 0, [{ id: 'i1', name: 'ЗАГС', city: 'Бельцы' }]);
+  const first = await savePut(101, { version: 3, documents: [] }, 1);
+  assert.equal(first.ok, true);
+  assert.equal(first.revision, 2);
+  const stale = await savePut(101, { version: 3, documents: [{ id: 'lost' }] }, 1);
+  assert.equal(stale.ok, false);
+  assert.deepEqual(stale.put, { version: 3, documents: [] });
+  const row = (await db.query('select documents, institutions from public.kinpass_state where telegram_user_id = 101')).rows[0];
+  assert.equal(row.documents.length, 1);
+  assert.equal(row.institutions[0].name, 'ЗАГС');
+  await assert.rejects(savePut(101, [1, 2], 2));
+  await assert.rejects(asRole('anon', () => db.query("select public.kinpass_save_put(101, '{}'::jsonb, 2)")), { code: '42501' });
+});
+

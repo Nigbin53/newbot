@@ -3,26 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0b0c">
+  <meta name="theme-color" content="#f6f7f1">
   <meta name="referrer" content="no-referrer">
-  <meta name="description" content="Kinpass — семейные документы, города и сроки в одном деле.">
-  <title>Kinpass</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="mini.css">
-  <link rel="stylesheet" href="carousel.css">
+  <meta name="description" content="Путь — один паспорт, документы трёх поколений: куда ехать и что заказать.">
+  <title>Путь</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23254b3d'/%3E%3Cpath d='M19 44V24a10 10 0 0 1 20 0v20M29 44V31a8 8 0 0 1 16 0v13' fill='none' stroke='%23dceb9f' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="family.css">
+  <link rel="stylesheet" href="people-icons.css">
+  <link rel="stylesheet" href="roadmap.css">
+  <link rel="stylesheet" href="city-plan.css">
+  <link rel="stylesheet" href="refinement.css">
+  <link rel="stylesheet" href="journey-refinement.css">
+  <link rel="stylesheet" href="telegram.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="config.js"></script>
   <script defer src="cloud.js"></script>
-  <script defer src="carousel.js"></script>
+  <script defer src="people-icons.js"></script>
+  <script defer src="roadmap.js"></script>
   <script defer src="app.js"></script>
 </head>
-<body class="mini-app" data-mode="mini">
-  <div id="app"></div>
-  <div id="modal-root"></div>
-  <div id="toast" role="status" aria-live="polite"></div>
-  <div class="sync-status" role="status">Сохранение…</div>
+<body class="tg-app">
+  <div class="phone" id="phone">
+    <header class="app-header"><button class="app-brand" data-action="home" aria-label="На главный экран"><svg viewBox="0 0 36 36"><path d="M5 29V12a8 8 0 0 1 16 0v17M14 29V18a7 7 0 0 1 14 0v11"/></svg>путь</button><div class="header-actions"><button class="header-label-button notification-button" data-action="notifications" aria-label="Сроки всей семьи"><span data-icon="bell"></span><span>Сроки</span><i></i></button><button class="header-label-button" data-action="profile" aria-label="Настройки семьи"><span data-icon="people"></span><span>Семья</span></button></div></header>
+    <nav id="family-switcher" class="family-switcher" aria-label="Выберите чей план смотреть"></nav>
+    <main id="app-content" class="app-content"></main>
+    <nav class="bottom-nav" aria-label="Основная навигация">
+      <button class="nav-item active" data-tab="home"><span data-icon="home"></span><span>Обзор</span></button>
+      <button class="nav-item" data-tab="docs"><span data-icon="documents"></span><span>Документы</span></button>
+      <button class="nav-item" data-tab="trips"><span data-icon="route"></span><span>Поездки</span></button>
+      <button class="nav-item" data-tab="plan"><span data-icon="map"></span><span>План</span></button>
+    </nav>
+    <div id="sheet-layer" class="sheet-layer" aria-hidden="true"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
 </body>
 </html>

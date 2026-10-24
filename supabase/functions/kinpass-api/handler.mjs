@@ -3,6 +3,7 @@ import {
   validateDocumentId, validateFileName, decodeUpload, isOwnedPath, validateInstitutions,
   cleanInstitution, validateLookup, MAX_UPLOADS, MAX_STORAGE_BYTES, AI_DAILY_LIMIT,
 } from './security.mjs';
+import { fromKinpass, validatePut, PutError } from '../_shared/put.mjs';
 
 export function createHandler({ botToken, appOrigin, backend, ai = null, maxAgeSeconds = 3600, now = () => Date.now(), uuid = () => crypto.randomUUID() }) {
   const headers = {
@@ -31,7 +32,19 @@ export function createHandler({ botToken, appOrigin, backend, ai = null, maxAgeS
       const body = await readJson(request);
       const user = await verifyInitData(body.initData, botToken, { now: now(), maxAgeSeconds });
       if (body.action === 'load') {
-        return response(await backend.load(user.id));
+        const state = await backend.load(user.id);
+        const { put_state: stored, ...legacy } = state;
+        // First open of «Путь»: convert the earlier Kinpass documents and institutions.
+        return response({ ...legacy, put: stored || fromKinpass(legacy), migrated: !stored });
+      }
+      if (body.action === 'save-put') {
+        let put;
+        try { put = validatePut(body.put); }
+        catch (error) { if (error instanceof PutError) throw new ApiError(400, 'INVALID_PUT', 'INVALID_PUT', error.message); throw error; }
+        const revision = validateRevision(body.revision);
+        const saved = await backend.savePut(user.id, put, revision);
+        if (!saved.ok) return response({ error: 'REVISION_CONFLICT', put: saved.put, revision: saved.revision }, 409);
+        return response({ put: saved.put, revision: saved.revision });
       }
       if (body.action === 'save') {
         const documents = validateDocuments(body.documents);

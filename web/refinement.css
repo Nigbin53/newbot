@@ -1,0 +1,275 @@
+/* A quiet, legible foundation: white task groups, clear type and one action colour. */
+:root {
+  --ink: #23302b;
+  --forest: #2f6650;
+  --forest-deep: #244f3f;
+  --lime: #b8cfb0;
+  --paper: #f7f8f5;
+  --muted: #68736d;
+  --line: #e5e9e2;
+  --amber: #8b642f;
+  --amber-bg: #faf2e5;
+  --white: #fff;
+  --surface-soft: #f1f3ef;
+  --sage: #eaf1e8;
+}
+
+body { background: #eef0eb; color: var(--ink); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline-color: #719884; }
+.showcase-tag, .concept-label, .intro-kicker, .phone-caption, .showcase-footer { color: #788279; }
+.intro-panel h1 em { color: #748171; }
+.intro-panel > p, .intro-bottom, .insight-panel > p, .demo-note { color: #737e75; }
+.intro-bottom strong, .feature.active, .feature:hover { color: #425e4f; }
+.feature { border-color: #dce2d8; color: #68776b; }
+.feature div > span { color: #7a867b; }
+.phone { background: var(--paper); }
+.phone .status-bar { color: var(--ink); }
+
+/* Consistent chrome uses less vertical space and lets the current task lead. */
+.phone .app-header { height: 54px; padding: 0 20px; }
+.phone .app-brand { font-size: 24px; gap: 5px; letter-spacing: -1px; color: #273b31; }
+.phone .app-brand > svg { width: 27px; height: 27px; stroke-width: 2.6; }
+.phone .app-brand .demo-badge { color: #7c877e; border-color: #d9e0d6; font-size: 8px; padding: 2px 4px; }
+.phone .header-actions { gap: 7px; }
+.phone .header-label-button { min-width: 44px; min-height: 44px; padding: 3px 2px; gap: 2px; font-size: 11px; font-weight: 450; color: #66736a; }
+.phone .header-label-button .icon { width: 20px; height: 20px; stroke-width: 1.8; }
+.phone .notification-button i { width: 5px; height: 5px; top: 3px; right: 11px; background: #7e9c77; }
+.phone .app-content { padding: 18px 20px 28px; }
+.phone .eyebrow { color: var(--muted); font-size: 11px; letter-spacing: .8px; line-height: 1.4; font-weight: 500; }
+.phone .page-title { font-size: 30px; font-weight: 600; line-height: 1.16; letter-spacing: -1.05px; }
+.phone .page-subtitle { color: var(--muted); font-size: 13px; line-height: 1.6; margin-top: 9px; }
+.phone .section-heading { margin-top: 25px; margin-bottom: 12px; }
+.phone .section-heading h2, .phone .family-section-heading h2 { font-size: 17px; line-height: 1.35; font-weight: 600; letter-spacing: -.4px; }
+.phone .section-heading .text-link, .phone .text-link { font-size: 12px; color: var(--forest); font-weight: 500; min-height: 32px; }
+.phone .section-caption { font-size: 12px; line-height: 1.65; color: var(--muted); }
+.phone .step-label { font-size: 11px; color: var(--muted); }
+
+/* Filters are light and labelled; the selected option is a tint, not a dark banner. */
+.phone .family-switcher { margin: 3px 20px 0; padding: 0; gap: 6px; border: 0; border-radius: 0; background: transparent; }
+.phone .person-tab { min-height: 40px; flex: 1; padding: 6px 7px; gap: 5px; font-size: 12px; font-weight: 500; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: #68736d; box-shadow: none; }
+.phone .person-tab:first-child { flex: 1.03; }
+.phone .person-tab .icon { width: 18px; height: 18px; stroke-width: 1.8; }
+.phone .person-tab.active { background: var(--sage); color: #315b43; border-color: #cadbc7; box-shadow: none; }
+.phone .person-tab .person-dot { width: 22px; height: 22px; }
+.phone .person-tab.active .person-dot { outline: none; }
+.phone .family-switcher.city-switcher { padding: 0 0 1px; gap: 7px; border: 0; border-radius: 0; background: transparent; scroll-padding-inline: 0; }
+.phone .city-tab { min-height: 40px; padding: 8px 12px; gap: 5px; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: #68736d; font-size: 12px; font-weight: 500; box-shadow: none; }
+.phone .city-tab .icon { width: 16px; height: 16px; stroke-width: 1.8; }
+.phone .city-tab.active { background: var(--sage); border-color: #cadbc7; color: #315b43; box-shadow: none; }
+.phone .city-switcher + .app-content { padding-top: 20px; }
+.phone .family-switcher.plan-view-switcher { min-height: 39px; padding: 0; gap: 23px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+.phone .plan-view-tab { position: relative; flex: 0 0 auto; min-height: 38px; padding: 6px 1px 10px; gap: 6px; font-size: 13px; font-weight: 450; border: 0; border-radius: 0; background: transparent; color: var(--muted); box-shadow: none; }
+.phone .plan-view-tab:first-child { flex: 0 0 auto; }
+.phone .plan-view-tab .icon { height: 17px; width: 17px; stroke-width: 1.8; }
+.phone .plan-view-tab.active { background: transparent; color: var(--forest); font-weight: 550; box-shadow: none; }
+.phone .plan-view-tab.active::after { position: absolute; content: ''; height: 2px; left: 0; right: 0; bottom: -1px; background: var(--forest); border-radius: 2px; }
+
+.phone .bottom-nav { height: 66px; padding: 7px 12px 5px; gap: 3px; background: #fff; border-top: 1px solid var(--line); }
+.phone .nav-item { flex: 1; min-width: 0; padding: 1px 2px; justify-content: center; gap: 4px; border-radius: 0; background: transparent; font-size: 11px; line-height: 1.2; font-weight: 450; color: #7b857f; }
+.phone .nav-item .icon { box-sizing: border-box; width: 44px; height: 28px; padding: 3px 11px; stroke-width: 1.8; border-radius: 15px; }
+.phone .nav-item.active { color: var(--forest); background: transparent; font-weight: 550; }
+.phone .nav-item.active .icon { background: #eaf1e8; stroke-width: 2; }
+.phone .nav-item.active::before { display: none; }
+.phone .home-indicator { background: #fff; }
+.phone .home-indicator::after { background: #2e3c32; }
+
+/* People remain recognisable and their colours belong only to ownership. */
+.phone .owner-badge { font-size: 11px; font-weight: 500; }
+.phone .owner-badge .person-dot { height: 22px; width: 22px; }
+.phone .family-section-heading { margin: 23px 0 12px; }
+.phone .family-section-heading > span { font-size: 12px; color: var(--muted); }
+.phone .family-members { gap: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+.phone .family-member-card { padding: 15px; gap: 0 11px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: #fff; grid-template-columns: 38px minmax(0,1fr) auto; }
+.phone .family-member-card:last-child { border-bottom: 0; }
+.phone .member-avatar { width: 38px; height: 38px; border-radius: 12px; }
+.phone .member-details h3 { font-size: 15px; line-height: 1.4; font-weight: 550; letter-spacing: -.2px; }
+.phone .member-target { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.phone .member-details p { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 4px; }
+.phone .member-progress strong { font-size: 16px; font-weight: 550; }
+.phone .member-progress em { font-size: 12px; color: var(--muted); }
+.phone .member-progress small { font-size: 11px; color: var(--muted); }
+.phone .member-bar { height: 3px; margin-top: 12px; background: #eff2eb; }
+.phone .family-total-note { font-size: 12px; color: var(--muted); line-height: 1.65; }
+
+/* A document collection reads as a list, rather than many unrelated cards. */
+.phone .mini-summary { font-size: 12px; color: var(--muted); gap: 12px; line-height: 1.5; }
+.phone .search-box { margin-top: 19px; min-height: 44px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; color: #7c887e; }
+.phone .search-box .icon { width: 18px; height: 18px; stroke-width: 1.8; }
+.phone .search-box input { font-size: 13px; color: var(--ink); }
+.phone .search-box input::placeholder { color: #8a948d; }
+.phone .add-document-button { min-height: 40px; padding: 8px 10px; background: #fff; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; color: #52665a; }
+.phone .round-add { width: 40px; height: 40px; color: var(--forest); border-color: var(--line); background: #fff; }
+.phone .filter-row { margin: 14px 0 17px; gap: 6px; }
+.phone .filter-button { min-height: 38px; padding: 8px 11px; font-size: 12px; font-weight: 450; border-color: var(--line); background: #fff; color: var(--muted); }
+.phone .filter-button small { font-size: 11px; margin-left: 3px; opacity: .75; }
+.phone .filter-button.active { background: var(--sage); border-color: #cadbc7; color: #315b43; }
+.phone .document-list { gap: 0; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #fff; }
+.phone .document-row { padding: 15px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: #fff; }
+.phone .document-row:last-child { border-bottom: 0; }
+.phone .doc-row-main { gap: 11px; }
+.phone .doc-icon { width: 36px; height: 41px; border-radius: 10px; background: #edf1e8; color: #6b8164; }
+.phone .doc-icon .icon { width: 23px; height: 23px; stroke-width: 1.8; color: #5a7352; }
+.phone .doc-icon.pending { background: #f0f2ee; color: #7a8577; }
+.phone .doc-icon.pending .icon { color: #778373; }
+.phone .doc-icon.attention { background: #faf2e5; color: #99743c; }
+.phone .doc-icon.attention .icon { color: #99743c; }
+.phone .doc-info h3 { font-size: 14px; line-height: 1.4; font-weight: 500; letter-spacing: -.2px; }
+.phone .doc-info p { font-size: 12px; line-height: 1.5; color: var(--muted); margin-top: 4px; }
+.phone .doc-info p.attention { color: #9c743b; }
+.phone .doc-row-bottom { padding-top: 0; margin-top: 11px; border-top: 0; }
+.phone .document-action { font-size: 11px; font-weight: 450; line-height: 1.35; color: #7a887c; gap: 3px; }
+.phone .document-action .icon { height: 17px; width: 17px; stroke-width: 1.7; }
+.phone .status-label { font-size: 11px; font-weight: 450; padding: 4px 7px; border-radius: 6px; }
+.phone .status-label.done { background: #edf3e9; color: #58734c; }
+.phone .status-label.todo { background: #f1f3ee; color: #6b7965; }
+.phone .status-label.waiting { background: #f2eef2; color: #7a6b79; }
+.phone .status-label.risk { background: #faf0df; color: #97703c; }
+.phone .list-footnote { font-size: 12px; line-height: 1.65; color: var(--muted); margin-top: 14px; }
+.phone .empty-state { font-size: 13px; color: var(--muted); }
+.phone .pill { font-size: 11px; background: #edf3e8; color: #5d754f; font-weight: 450; }
+.phone .pill.neutral { color: #6e7a6b; background: #f0f2ed; }
+.phone .pill.amber { color: #97713d; background: #faf0df; }
+
+/* Trips retain their map, while city tasks become the obvious reading order. */
+.phone .map-card { margin-top: 21px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+.phone .map-caption { top: 10px; left: 10px; font-size: 11px; color: #647361; padding: 6px 9px; background: #ffffffed; }
+.phone .trip-stats { padding: 14px 16px; background: #fff; border-top-color: var(--line); }
+.phone .trip-stats strong { font-size: 16px; font-weight: 550; color: var(--ink); }
+.phone .trip-stats small { font-size: 11px; color: var(--muted); }
+.phone .trip-stats > i { background: var(--line); }
+.phone .trip-stats .optimized-stat { color: #638455; }
+.phone .trip-tabs { border-bottom-color: var(--line); margin-top: 24px; gap: 22px; }
+.phone .trip-tabs button { min-height: 38px; font-size: 13px; color: var(--muted); padding-bottom: 10px; }
+.phone .trip-tabs button.active { color: var(--forest); font-weight: 550; }
+.phone .trip-tabs button.active::after { background: var(--forest); }
+.phone .city-heading { font-size: 15px; margin-top: 23px; color: var(--ink); }
+.phone .city-heading > span { font-size: 12px; color: var(--muted); }
+.phone .trip-card { border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #fff; margin-top: 10px; }
+.phone .trip-card h3 { font-size: 20px; font-weight: 550; line-height: 1.25; letter-spacing: -.5px; }
+.phone .trip-card p, .phone .trip-points { font-size: 12px; line-height: 1.55; color: var(--muted); }
+.phone .date-tile { width: 43px; min-height: 46px; border-radius: 11px; background: #f0f3ec; }
+.phone .date-tile strong { font-size: 19px; font-weight: 550; }
+.phone .date-tile small { font-size: 11px; color: #7a8574; }
+.phone .trip-owner-list { border-top-color: var(--line); margin-top: 13px; padding-top: 12px; }
+.phone .trip-owner-list .owner-badge { font-size: 11px; }
+.phone .trip-owner-list > span:last-child:not(.owner-badge) { font-size: 11px; color: var(--muted); }
+.phone .route-city-list { background: #f0f3ec; }
+.phone .route-city-list p { font-size: 13px; color: var(--muted); }
+.phone .optimize-card { background: #edf2e7; padding: 16px; border: 1px solid #e1e8d9; border-radius: 16px; }
+.phone .optimize-card h3 { font-size: 14px; }
+.phone .optimize-card p { font-size: 12px; color: var(--muted); line-height: 1.65; }
+.phone .optimize-card button { font-size: 12px; min-height: 36px; color: #4c6e43; }
+
+/* Calendar shares the same white surfaces and restrained selection. */
+.phone .plan-date-card { background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+.phone .plan-date-card .eyebrow { color: var(--muted); font-size: 11px; }
+.phone .plan-date-card h2 { font-size: 24px; font-weight: 550; }
+.phone .plan-date-card p { color: var(--muted); font-size: 12px; }
+.phone .plan-date-card button { color: #68786b; border-color: var(--line); background: #f4f6f1; }
+.phone .calendar-heading { font-size: 15px; }
+.phone .calendar-heading > div { color: var(--muted); }
+.phone .calendar-heading button { min-width: 32px; min-height: 32px; display: flex; align-items: center; justify-content: center; }
+.phone .day-label { font-size: 12px; color: #899286; }
+.phone .day-cell { height: 37px; max-width: 37px; font-size: 13px; color: #52614f; }
+.phone .day-cell.today { border-color: #bacab1; }
+.phone .day-cell.selected { background: #e2edde; color: #375d2e; font-weight: 600; }
+.phone .day-cell.submission { background: #eff3e1; color: #6d7747; }
+.phone .day-cell.muted { opacity: .45; }
+.phone .calendar-legend, .phone .family-calendar-legend { font-size: 11px; color: var(--muted); }
+.phone .timeline-date small { font-size: 11px; color: var(--muted); }
+.phone .timeline-info { border-color: var(--line); border-radius: 13px; padding: 14px; }
+.phone .timeline-info h3 { font-size: 13px; }
+.phone .timeline-info p { font-size: 12px; color: var(--muted); }
+.phone .timeline-info > span { font-size: 11px; color: #6c8260; }
+.phone .timeline-info > .owner-badge { font-size: 11px; }
+.phone .no-events { color: var(--muted); background: #eef2e9; font-size: 12px; }
+
+/* Detail sheets are readable without turning every secondary detail green. */
+.phone .sheet-layer { background: #13241c65; backdrop-filter: blur(2px); }
+.phone .sheet { background: #fff; }
+.phone .sheet-grab { width: 35px; height: 4px; min-height: 4px; background: #d3dbcf; }
+.phone .sheet-header { padding: 20px 20px 17px; }
+.phone .sheet-header h2 { font-size: 25px; line-height: 1.25; font-weight: 550; letter-spacing: -.7px; padding-right: 40px; }
+.phone .sheet-header > .eyebrow { font-size: 11px; color: var(--muted); }
+.phone .sheet-close { top: 14px; right: 13px; width: 44px; height: 44px; color: #6d7b6a; background: #f0f3ec; }
+.phone .sheet-close .icon { width: 20px; height: 20px; stroke-width: 1.8; }
+.phone .sheet-body { padding: 0 20px 12px; }
+.phone .sheet-body > p { font-size: 13px; line-height: 1.7; color: var(--muted); }
+.phone .sheet-section > h3 { font-size: 15px; font-weight: 550; color: var(--ink); }
+.phone .sheet .owner-badge { font-size: 12px; }
+.phone .sheet-note { color: #7b8776 !important; font-size: 11px !important; line-height: 1.65 !important; }
+.phone .detail-item h4 { font-size: 13px; font-weight: 500; }
+.phone .detail-item p { font-size: 12px; color: var(--muted); }
+.phone .detail-item > span .icon { color: #7d8d75; width: 20px; height: 20px; stroke-width: 1.8; }
+.phone .detail-item .copy-button { min-width: 44px; min-height: 44px; }
+.phone .detail-item .copy-button .icon { color: #7c8d72; }
+.phone .checklist-item { min-height: 46px; padding: 13px 0; font-size: 13px; border-color: var(--line); line-height: 1.5; }
+.phone .check-box { width: 22px; height: 22px; border-radius: 6px; border-color: #c0ceba; }
+.phone .check-box.checked { color: #668c55; background: #e8f0df; border-color: #c7dab9; }
+.phone .sheet-event { background: #fafbf8; border-color: var(--line); border-radius: 13px; }
+.phone .sheet-event h4 { font-size: 13px; }
+.phone .sheet-event p { font-size: 12px; color: var(--muted); }
+.phone .sheet-event .pill { font-size: 11px; }
+.phone .primary-button { min-height: 46px; background: var(--forest); color: #fff; border-radius: 12px; padding: 13px 15px; font-size: 14px; font-weight: 500; }
+.phone .secondary-button { min-height: 46px; background: #fff; color: #52674d; border: 1px solid #d9e2d3; border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 450; }
+.phone .dependency { min-height: 46px; border-color: var(--line); border-radius: 11px; padding: 13px; font-size: 13px; line-height: 1.45; background: #fafbf8; }
+.phone .dependency > .icon { color: #7a9270; }
+.phone .dependency-owner { font-size: 11px; line-height: 1.5; color: var(--muted); }
+.phone .document-status-banner { background: #eef4e8; border-radius: 13px; }
+.phone .document-status-banner h3 { font-size: 14px; font-weight: 500; }
+.phone .document-status-banner p { font-size: 12px; color: #718468; }
+.phone .document-status-banner .icon { color: #6c9255; }
+.phone .document-status-banner.amber { background: #faf2e5; }
+.phone .document-status-banner.amber p { color: #a0855b; }
+.phone .upload-zone { border-color: #c4d2b9; background: #fcfdfb; color: #739265; }
+.phone .upload-zone strong { font-size: 13px; font-weight: 500; }
+.phone .upload-zone p { font-size: 12px; color: var(--muted); }
+.phone .file-line { font-size: 12px; color: #6b865b; background: #eff4e9; }
+.phone .field-label { font-size: 12px; line-height: 1.4; color: var(--muted); margin-top: 17px; margin-bottom: 7px; }
+.phone .text-input { min-height: 46px; padding: 12px; color: var(--ink); font-size: 14px; background: #fdfefc; border: 1px solid #dce4d6; border-radius: 11px; }
+.phone .time-option { min-height: 44px; padding: 11px 13px; font-size: 13px; color: var(--muted); background: #fff; border-color: var(--line); }
+.phone .time-option.active { background: #eef3e8; color: #627e53; border-color: #c8d8ba; }
+.phone .date-option { min-height: 67px; background: #fff; color: var(--ink); border-color: var(--line); }
+.phone .date-option small { font-size: 11px; color: var(--muted); }
+.phone .date-option.active { background: #edf3e6; border-color: #c6d9b9; color: #4d6c3c; }
+.phone .date-option.active small { color: #73896a; }
+.phone .date-impact { background: #f0f4e9; }
+.phone .date-impact h3 { font-size: 14px; }
+.phone .date-impact p { font-size: 13px; color: var(--muted); }
+.phone .date-impact.risk { background: #faf2e5; }
+.phone .date-impact.risk h3 { color: #99703b; }
+.phone .date-impact.risk p { color: #a08863; }
+.phone .profile-summary { background: #f0f4e9; }
+.phone .profile-summary p { color: var(--muted); font-size: 12px; }
+.phone .setting-row { min-height: 50px; font-size: 13px; border-color: var(--line); }
+.phone .setting-row .icon { color: #7e9470; stroke-width: 1.8; }
+.phone .detail-link { font-size: 13px; border-color: var(--line); background: #fafbf8; color: #63765a; }
+.phone .detail-link strong { font-size: 13px; }
+.phone .detail-link small { font-size: 12px; color: var(--muted); }
+.phone .submission-list { border-color: var(--line); }
+.phone .submission-person-row { min-height: 48px; padding: 13px; border-color: var(--line); }
+.phone .submission-person-row > span:nth-child(2) { color: var(--muted); font-size: 12px; }
+.phone .submission-person-row strong { font-size: 13px; }
+.phone .toast { background: #2e4d3df2; font-size: 13px; border-radius: 12px; }
+.phone .warning-card { background: #faf3e6; border-color: #eedfc4; color: #9a763f; }
+.phone .warning-card strong { font-size: 13px; }
+.phone .warning-card p { font-size: 12px; color: #9e8761; }
+.phone .safe-card { background: #f1f5e9; border-color: #dfe8d2; color: #73895c; }
+.phone .safe-card p { color: #829471; }
+
+@media (max-width: 760px) {
+  .phone .app-header { height: 54px; padding-top: env(safe-area-inset-top,0px); }
+  .phone .bottom-nav { height: 66px; }
+  .phone .home-indicator { height: max(12px,env(safe-area-inset-bottom,12px)); }
+  .phone .text-input, .phone .search-box input { font-size: 16px; }
+}
+@media (max-width: 374px) {
+  .phone .app-header { padding-left: 16px; padding-right: 16px; }
+  .phone .app-content { padding-left: 16px; padding-right: 16px; }
+  .phone .family-switcher { margin-left: 16px; margin-right: 16px; gap: 5px; }
+  .phone .person-tab { font-size: 11px; padding: 6px 4px; gap: 3px; }
+  .phone .person-tab .person-dot { width: 20px; height: 20px; }
+  .phone .document-row { padding: 14px 12px; }
+  .phone .doc-info h3 { font-size: 14px; }
+  .phone .filter-button { font-size: 12px; padding-left: 9px; padding-right: 9px; }
+}

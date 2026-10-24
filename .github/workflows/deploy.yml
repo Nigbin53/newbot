@@ -119,14 +119,14 @@ jobs:
         id: pages
         uses: actions/deploy-pages@v4
 
-      - name: Бот — кнопка меню и ответ на /start
+      - name: Бот — кнопка «Открыть Путь» и ответ на /start
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           MINI_URL: ${{ steps.site.outputs.mini }}
         run: |
           telegram() { curl -fsS --max-time 20 -H 'Content-Type: application/json' -d "$2" "https://api.telegram.org/bot${BOT_TOKEN}/$1" | jq -e '.ok == true' > /dev/null; }
-          telegram setChatMenuButton "$(jq -n --arg url "$MINI_URL" '{menu_button:{type:"web_app",text:"Открыть Kinpass",web_app:{url:$url}}}')"
+          telegram setChatMenuButton "$(jq -n --arg url "$MINI_URL" '{menu_button:{type:"web_app",text:"Открыть Путь",web_app:{url:$url}}}')"
           secret=$(node --input-type=module -e "import { webhookSecret } from './supabase/functions/kinpass-bot/bot.mjs'; console.log(await webhookSecret(process.env.BOT_TOKEN));")
           echo "::add-mask::${secret}"
           hook="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/kinpass-bot"

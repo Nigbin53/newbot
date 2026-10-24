@@ -22,6 +22,7 @@
     FILE_NOT_FOUND: 'Файл не найден. Загрузите его заново.',
     STORAGE_LIMIT: 'Хранилище заполнено. Удалите ненужные документы с вложениями и повторите загрузку.',
     DOCUMENT_NOT_FOUND: 'Документ не найден. Обновите дело.',
+    INVALID_PUT: 'Не удалось сохранить: данные дела не прошли проверку. Обновите приложение.',
     INVALID_INSTITUTION: 'Проверьте название, город и ссылку учреждения.',
     INVALID_INSTITUTIONS: 'Можно сохранить до 100 учреждений.',
     INVALID_LOOKUP: 'Введите название учреждения — хотя бы 2 буквы.',
@@ -37,6 +38,7 @@
       this.status = status;
       this.documents = state.documents;
       this.institutions = state.institutions;
+      this.put = state.put;
       this.revision = state.revision;
     }
   }
@@ -97,6 +99,19 @@
     upload(documentId, fileName, dataUrl) { return this.request('upload', { documentId, fileName, dataUrl }); }
     file(documentId) { return this.request('file', { documentId }); }
     lookup(query, city) { return this.request('lookup', { query, city }); }
+    async savePut(put) {
+      if (this.saving) throw new Error('Предыдущее изменение ещё сохраняется.');
+      this.saving = true;
+      try {
+        const state = await this.request('save-put', { put, revision: this.revision });
+        if (!Number.isSafeInteger(state.revision)) throw new Error('Сервер вернул неполные данные.');
+        this.revision = state.revision;
+        return state;
+      } catch (error) {
+        if (error.code === 'REVISION_CONFLICT' && Number.isSafeInteger(error.revision)) this.revision = error.revision;
+        throw error;
+      } finally { this.saving = false; }
+    }
   }
   window.KinpassCloud = KinpassCloud;
 })();

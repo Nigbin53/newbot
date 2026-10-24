@@ -26,13 +26,18 @@ export function createBackend({ url, serviceKey, fetcher = fetch }) {
 
   return {
     async load(userId) {
-      const query = new URLSearchParams({ telegram_user_id: `eq.${userId}`, select: 'documents,institutions,revision', limit: '1' });
+      const query = new URLSearchParams({ telegram_user_id: `eq.${userId}`, select: 'documents,institutions,put_state,revision', limit: '1' });
       const rows = await api(`/rest/v1/kinpass_state?${query}`);
-      return rows[0] || { documents: [], institutions: [], revision: 0 };
+      return rows[0] || { documents: [], institutions: [], put_state: null, revision: 0 };
     },
     async save(userId, documents, revision, institutions = null) {
       return await api('/rest/v1/rpc/kinpass_save_state', {
         method: 'POST', body: JSON.stringify({ p_user_id: userId, p_documents: documents, p_revision: revision, p_institutions: institutions }),
+      });
+    },
+    async savePut(userId, state, revision) {
+      return await api('/rest/v1/rpc/kinpass_save_put', {
+        method: 'POST', body: JSON.stringify({ p_user_id: userId, p_state: state, p_revision: revision }),
       });
     },
     async takeAi(userId, limit) {

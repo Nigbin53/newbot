@@ -6,6 +6,7 @@ import { createHandler } from '../supabase/functions/kinpass-api/handler.mjs';
 import { createBackend } from '../supabase/functions/kinpass-api/backend.mjs';
 import { verifyInitData, validateDocuments, validateInstitutions, cleanInstitution, decodeUpload, MAX_FILE_BYTES, AI_DAILY_LIMIT } from '../supabase/functions/kinpass-api/security.mjs';
 import { createGemini, parseJsonObject, describeCase } from '../supabase/functions/_shared/gemini.mjs';
+import { fromKinpass, validatePut, describePut, guessKind } from '../supabase/functions/_shared/put.mjs';
 
 const token = '123456:TEST_ONLY_NOT_A_REAL_BOT_TOKEN';
 const origin = 'https://example.github.io';
@@ -36,7 +37,7 @@ class FakeBackend {
   loadCalls = [];
   async load(id) {
     this.loadCalls.push(id);
-    return structuredClone(this.states.get(id) || { documents: [], institutions: [], revision: 0 });
+    return structuredClone(this.states.get(id) || { documents: [], institutions: [], put_state: null, revision: 0 });
   }
   async uploads(id, paths) {
     return paths.map(path => this.registry.get(path)).filter(item => item?.telegram_user_id === id).map(item => structuredClone(item));
@@ -45,6 +46,13 @@ class FakeBackend {
     return [...this.registry.values()].filter(upload => upload.telegram_user_id === id);
   }
   aiUsage = new Map();
+  async savePut(id, put, revision) {
+    const state = this.states.get(id) || { documents: [], institutions: [], put_state: null, revision: 0 };
+    if (state.revision !== revision) return { ok: false, put: structuredClone(state.put_state), revision: state.revision };
+    const next = { ...state, put_state: structuredClone(put), revision: revision + 1 };
+    this.states.set(id, next);
+    return { ok: true, put: structuredClone(put), revision: next.revision };
+  }
   async takeAi(id, limit) {
     const used = this.aiUsage.get(id) || 0;
     if (used >= limit) return false;
@@ -137,7 +145,9 @@ test('Separate forged client user ID cannot read or overwrite another Telegram a
   const { request } = setup();
   assert.equal((await request('save', { documents: [document()], revision: 0 })).status, 200);
   const stranger = await request('load', { userId: '101', telegram_user_id: '101' }, 202);
-  assert.deepEqual(stranger.body, { documents: [], institutions: [], revision: 0 });
+  assert.deepEqual(stranger.body.documents, []);
+  assert.equal(stranger.body.revision, 0);
+  assert.equal(stranger.body.migrated, true);
   assert.equal((await request('save', { documents: [document('other')], revision: 0, userId: '101' }, 202)).status, 200);
   const owner = await request('load');
   assert.equal(owner.body.documents[0].id, 'd1');
@@ -403,3 +413,77 @@ test('Gemini falls back: Maps tool rejected → search only → fallback model; 
   const partial = setup({ async lookupInstitution() { return { institution: { name: 'ЗАГС', notes: 'Приём по записи' }, sources: [] }; } });
   assert.equal((await partial.request('lookup', { query: 'ЗАГС' })).status, 200);
 });
+
+const legacyDocs = () => [
+  document('a1', { name: 'Архивная справка', owner: 'grand', city: 'Яссы', status: 'todo', days: 30, institution: 'i1' }),
+  document('a2', { name: 'Свидетельство о браке', owner: 'mom', city: 'Бельцы', status: 'pending', requested: '2026-10-15', expected: '2026-10-29' }),
+  document('a3', { name: 'Перевод свидетельства', owner: 'mom', city: 'Бельцы', status: 'todo' }),
+  document('a4', { name: 'Паспорт', owner: 'self', city: 'Кишинёв', status: 'ready', expires: '2029-08-16', issued: '2019-08-16' }),
+  document('a5', { name: 'Справка без города', owner: 'self', city: '', status: 'todo' }),
+];
+
+test('Kinpass data converts to a «Путь» case: owners, received, orders, trips by city and institution, nothing invented', () => {
+  const put = fromKinpass({ documents: legacyDocs(), institutions: [place('i1', { city: 'Яссы', name: 'Arhivele Naționale Iași' })] });
+  assert.equal(put.version, 3);
+  const byTitle = Object.fromEntries(put.documents.map(doc => [doc.title, doc]));
+  assert.equal(byTitle['Архивная справка'].member, 'grandpa');
+  assert.equal(byTitle['Архивная справка'].kind, 'archive');
+  assert.equal(byTitle['Перевод свидетельства'].kind, 'translate');
+  assert.equal(byTitle['Паспорт'].received, true);
+  assert.equal(byTitle['Паспорт'].expiry, '2029-08-16');
+  assert.equal(byTitle['Паспорт'].legacyId, 'a4');
+  assert.deepEqual(put.orders[byTitle['Свидетельство о браке'].id], { ordered: true, collectionDate: '2026-10-29' });
+  const iasi = put.visits.find(visit => visit.city === 'Яссы');
+  assert.deepEqual({ office: iasi.office, address: iasi.address, contact: iasi.contact, date: iasi.date, member: iasi.member },
+    { office: 'Arhivele Naționale Iași', address: 'ул. Индепенденцей, 1', contact: '+373 231 00000', date: '', member: 'grandpa' });
+  // Pending order keeps its request date; the untouched translation in the same city is a separate undated stop.
+  const balti = put.visits.filter(visit => visit.city === 'Бельцы').map(visit => [visit.date, visit.docIds.length]);
+  assert.deepEqual(balti.sort(), [['', 1], ['2026-10-15', 1]]);
+  assert.equal(put.visits.some(visit => visit.docIds.includes(byTitle['Паспорт'].id)), false);
+  assert.equal(put.visits.some(visit => visit.docIds.includes(byTitle['Справка без города'].id)), false);
+  assert.equal(put.passportCase.submission, '');
+  assert.equal(put.passportCase.city, '');
+  assert.ok(put.documents.find(doc => doc.final));
+  assert.equal(put.places[0].name, 'Arhivele Naționale Iași');
+  assert.doesNotThrow(() => validatePut(put));
+  assert.equal(guessKind('Справка о несудимости'), 'shield');
+});
+
+test('«Путь» load converts once; save-put stores the case with revision checks and validation', async () => {
+  const { request, backend } = setup();
+  backend.states.set('101', { documents: legacyDocs(), institutions: [], put_state: null, revision: 4 });
+  const first = await request('load');
+  assert.equal(first.body.migrated, true);
+  assert.equal(first.body.revision, 4);
+  assert.equal(first.body.documents.length, 5);
+  const put = first.body.put;
+  put.documents[0].received = true;
+  const saved = await request('save-put', { put, revision: 4 });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.revision, 5);
+  const again = await request('load');
+  assert.equal(again.body.migrated, false);
+  assert.equal(again.body.put.documents[0].received, true);
+  assert.equal(backend.states.get('101').documents.length, 5, 'earlier Kinpass data is kept');
+  const stale = await request('save-put', { put, revision: 4 });
+  assert.equal(stale.status, 409);
+  assert.equal(stale.body.revision, 5);
+  for (const bad of [
+    { ...put, version: 2 },
+    { ...put, documents: [{ ...put.documents[0], id: 'x" onmouseover="1' }] },
+    { ...put, documents: [{ ...put.documents[0], member: 'cousin' }] },
+    { ...put, visits: [{ id: 'v1', member: 'self', docIds: ['<b>'], date: '' }] },
+    { ...put, notes: 'x'.repeat(3000) },
+  ]) assert.equal((await request('save-put', { put: bad, revision: 5 })).body.error, 'INVALID_PUT');
+});
+
+test('Bot summary of a «Путь» case lists owners, statuses, trips and submission', () => {
+  const put = fromKinpass({ documents: legacyDocs(), institutions: [place('i1', { city: 'Яссы', name: 'Arhivele Naționale Iași' })] });
+  const text = describePut(put, '2026-10-24');
+  assert.match(text, /Сегодня: 2026-10-24/);
+  assert.match(text, /Подача: дата не выбрана/);
+  assert.match(text, /Архивная справка \(Дед\); статус: нужно заказать; поездка: Яссы, дата не выбрана, Arhivele Naționale Iași/);
+  assert.match(text, /Свидетельство о браке \(Мама\); статус: заказан, забрать 2026-10-29/);
+  assert.match(text, /Паспорт \(Я\); статус: получен; город: Кишинёв/);
+});
+

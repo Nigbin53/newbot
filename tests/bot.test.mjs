@@ -21,7 +21,7 @@ test('/start in a private chat answers with a web_app button to the mini app', a
   assert.equal(sent.length, 1);
   assert.equal(sent[0].body.chat_id, 42);
   assert.equal(sent[0].body.text, WELCOME);
-  assert.deepEqual(sent[0].body.reply_markup.inline_keyboard[0][0], { text: 'Открыть Kinpass', web_app: { url: miniAppUrl } });
+  assert.deepEqual(sent[0].body.reply_markup.inline_keyboard[0][0], { text: 'Открыть Путь', web_app: { url: miniAppUrl } });
   assert.match(sent[0].url, /\/sendMessage$/);
 });
 
