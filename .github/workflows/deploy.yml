@@ -75,18 +75,20 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
         run: |
-          npx supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          npx supabase db push --yes
+          # On failure the last CLI lines go to the run summary (secrets are masked by GitHub).
+          sb() { local out; if ! out=$(npx supabase "$@" 2>&1); then echo "$out"; echo "::error title=supabase $1 $2::$(printf '%s' "$out" | tail -n 6 | tr '\n' ' ' | cut -c1-900)"; exit 1; fi; echo "$out"; }
+          sb link --project-ref "$SUPABASE_PROJECT_REF"
+          sb db push --yes
           umask 077
           secrets_file="$RUNNER_TEMP/function.env"
           printf 'BOT_TOKEN=%s\nAPP_ORIGIN=%s\nMINI_APP_URL=%s\n' "$BOT_TOKEN" "$APP_ORIGIN" "$MINI_APP_URL" > "$secrets_file"
           # Optional AI helper: institution lookup + answers in the bot (Gemini API key from aistudio.google.com).
           if [ -n "$GEMINI_API_KEY" ]; then printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" >> "$secrets_file"; else echo "::notice::GEMINI_API_KEY не задан — ИИ-помощник выключен."; fi
           if [ -n "$GEMINI_MODEL" ]; then printf 'GEMINI_MODEL=%s\n' "$GEMINI_MODEL" >> "$secrets_file"; fi
-          npx supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" --env-file "$secrets_file"
+          sb secrets set --project-ref "$SUPABASE_PROJECT_REF" --env-file "$secrets_file"
           rm -f "$secrets_file"
-          npx supabase functions deploy kinpass-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt --use-api
-          npx supabase functions deploy kinpass-bot --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt --use-api
+          sb functions deploy kinpass-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt --use-api
+          sb functions deploy kinpass-bot --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt --use-api
 
       - name: Проверить сервер
         env:
